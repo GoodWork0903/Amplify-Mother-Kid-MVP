@@ -1,12 +1,14 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { getTenantById } from "@/lib/mock";
 
-export default function TenantDetails({
+export default async function TenantDetails({
   params,
 }: {
-  params: { tenantId: string };
+  params: Promise<{ tenantId: string }>;
 }) {
-  const t = getTenantById(params.tenantId);
+  const { tenantId } = await params;
+  const t = getTenantById(tenantId);
 
   if (!t) {
     return <div className="text-zinc-600">Tenant not found.</div>;
@@ -58,4 +60,16 @@ export default function TenantDetails({
       </section>
     </div>
   );
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ tenantId: string }>;
+}): Promise<Metadata> {
+  const { tenantId } = await params;
+  const t = getTenantById(tenantId);
+  return {
+    title: t ? `Tenant ${t.name}` : "Tenant not found",
+  };
 }

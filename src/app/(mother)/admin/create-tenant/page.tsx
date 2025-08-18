@@ -41,7 +41,7 @@ export default function CreateTenantPage() {
         <select
           className="mt-1 w-full rounded-lg border px-3 py-2"
           value={plan}
-          onChange={(e) => setPlan(e.target.value as any)}
+          onChange={(e) => setPlan(e.target.value as "Starter" | "Pro")}
         >
           <option>Starter</option>
           <option>Pro</option>
