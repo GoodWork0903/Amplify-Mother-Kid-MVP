@@ -1,5 +1,17 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Requirements
+
+- Node.js 18.x
+
+If you use `nvm`, the included `.nvmrc` will auto-select Node 18 in this directory:
+
+```bash
+nvm use
+# If you don't have 18 installed yet:
+nvm install
+```
+
 ## Getting Started
 
 First, run the development server:
