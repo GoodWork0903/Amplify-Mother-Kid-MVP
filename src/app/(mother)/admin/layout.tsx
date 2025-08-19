@@ -54,7 +54,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       {/* Main */}
       <main className="p-6">
         <header className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">DashBoard </h1>
+          <h1 className="text-2xl font-semibold">Dashboard</h1>
         </header>
         <div className="rounded-2xl border bg-white p-4 shadow-sm">
           {children}

@@ -9,10 +9,17 @@
 //     </main>
 //   );
 // }
+// app/(mother)/admin/page.tsx
+
+// app/(kid)/[tenant]/page.tsx
+import { redirect } from "next/navigation";
+import { isSignedIn } from "@/lib/session";
 import Link from "next/link";
 import { tenants } from "@/lib/mock";
 
-export default function TenantsPage() {
+export default function AdminPage() {
+  if(!isSignedIn()) redirect("/auth/signin");
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
