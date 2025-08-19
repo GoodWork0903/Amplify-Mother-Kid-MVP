@@ -8,8 +8,8 @@ export default function CreateTenantPage() {
     const token = (await cookies()).get("access_token")?.value;
     if (!token) redirect("/auth/signin");
     const name = String(formData.get("name") || "").trim();
-    const created = await createTenant(token, name);
-    redirect(`/admin`); // or `/t/${created.tenantId}`
+    await createTenant(token, name);
+    redirect(`/admin`);
   }
 
   return (

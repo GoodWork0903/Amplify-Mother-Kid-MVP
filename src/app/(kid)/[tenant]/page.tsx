@@ -5,18 +5,18 @@ import { fetchTenantCurrent } from "@/lib/api";
 
 export const dynamic = "force-dynamic"; // ensure this page runs server-side each request
 
-type Props = { params: { tenant: string } };
+type Props = { params: Promise<{ tenant: string }> };
 
 export default async function KidHome({ params }: Props) {
-  const tenantFromUrl = params.tenant;
+  const { tenant: tenantFromUrl } = await params;
 
   // Read the Cognito access token we set in the callback route
-  const cookieStore = cookies();
-  const token = cookies().get("access_token")?.value;
+  const cookieStore = await cookies();
+  const token = cookieStore.get("access_token")?.value;
   if (!token) redirect("/auth/signin");
 
   // Call the protected API (API Gateway → Lambda)
-  let tenant: { tenantId: string; name: string; branding?: any };
+  let tenant: { tenantId: string; name: string; branding?: Record<string, unknown> };
   try {
     tenant = await fetchTenantCurrent(token);
   } catch {
