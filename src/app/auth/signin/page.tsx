@@ -1,44 +1,32 @@
-"use client";
+import Link from "next/link";
 
-const COGNITO_DOMAIN = process.env.NEXT_PUBLIC_COGNITO_DOMAIN!;
-const REDIRECT_URI = encodeURIComponent(process.env.NEXT_PUBLIC_COGNITO_REDIRECT_URI!);
-const SCOPE = encodeURIComponent("openid email profile");
-
-const ADMIN_CLIENT = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID_ADMIN!;
-const TENANT_CLIENT = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID_TENANT!;
-
-function buildAuthorizeUrl(clientId: string, app: "admin" | "tenant", returnTo?: string) {
-  // State hints which button was used. If returnTo is omitted, the callback
-  // will route by group/tenantId.
-  const state = encodeURIComponent(
-    btoa(JSON.stringify({ app, returnTo: returnTo ?? "" }))
-  );
-  return `${COGNITO_DOMAIN}/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${REDIRECT_URI}&scope=${SCOPE}&state=${state}`;
+function authUrl(clientId: string) {
+  const p = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: process.env.NEXT_PUBLIC_REDIRECT_URI!,
+    response_type: "token",                // MVP: implicit flow (no secret)
+    scope: "openid email profile",
+  });
+  return `${process.env.NEXT_PUBLIC_COGNITO_DOMAIN}/oauth2/authorize?${p}`;
 }
 
 export default function SignIn() {
   return (
-    <div className="min-h-screen grid place-items-center p-6">
-      <div className="max-w-sm w-full space-y-3 rounded-xl border bg-white p-6">
-        <h1 className="text-xl font-semibold">Sign in</h1>
-
-        <button
-          className="w-full rounded-md bg-black text-white py-2"
-          onClick={() => (window.location.href = buildAuthorizeUrl(ADMIN_CLIENT, "admin", "/admin"))}
+    <div className="grid place-items-center h-[70vh]">
+      <div className="rounded-xl border p-6 w-[360px] space-y-3">
+        <h2 className="text-xl font-semibold">Sign in</h2>
+        <Link
+          className="block rounded bg-black text-white text-center py-2"
+          href={authUrl(process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID_ADMIN!)}
         >
           Sign in as Super Admin
-        </button>
-
-        <button
-          className="w-full rounded-md border py-2"
-          onClick={() => (window.location.href = buildAuthorizeUrl(TENANT_CLIENT, "tenant"))}
+        </Link>
+        <Link
+          className="block rounded border text-center py-2"
+          href={authUrl(process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID_TENANT!)}
         >
           Sign in to Kid App
-        </button>
-
-        <p className="text-xs text-zinc-500">
-          The destination will be chosen in the callback from your JWT (group / tenantId).
-        </p>
+        </Link>
       </div>
     </div>
   );
