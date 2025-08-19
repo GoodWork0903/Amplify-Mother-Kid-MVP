@@ -2,11 +2,12 @@
 import { redirect } from "next/navigation";
 import { isSignedIn } from "@/lib/session";
 
-export default function KidHome({ params }: { params: { tenant: string } }) {
-  if (!isSignedIn()) redirect("/auth/signin");
+export default async function KidHome({ params }: { params: Promise<{ tenant: string }> }) {
+  const { tenant } = await params;
+  if (!(await isSignedIn())) redirect("/auth/signin");
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Welcome, {params.tenant}!</h1>
+      <h1 className="text-2xl font-semibold">Welcome, {tenant}!</h1>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-xl border bg-white p-4">
