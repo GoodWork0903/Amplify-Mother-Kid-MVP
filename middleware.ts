@@ -1,9 +1,9 @@
 // middleware.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { runWithAmplifyServerContext } from './src/utils/amplify-server';
+import { runWithAmplifyServerContext } from '@/utils/amplify-server';
 import { fetchAuthSession } from 'aws-amplify/auth/server';
-
-const protectedRoutes = ['/dashboard', '/settings'];
+// 
+const protectedRoutes = ['/dashboard'];
 
 export async function middleware(request: NextRequest) {
   const url = new URL(request.url);
@@ -33,5 +33,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/settings/:path*'],
+  matcher: ['/dashboard/:path*'],
 };
