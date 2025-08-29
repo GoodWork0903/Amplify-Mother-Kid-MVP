@@ -1,3 +1,9 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
 
 @theme inline {
   --color-background: var(--background);
@@ -18,10 +24,3 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
-@import "tailwindcss";
-
-/* optional: nicer focus + table defaults */
-:root { color-scheme: light; }
-table { border-collapse: separate; border-spacing: 0; }
-th, td { vertical-align: middle; }
-
