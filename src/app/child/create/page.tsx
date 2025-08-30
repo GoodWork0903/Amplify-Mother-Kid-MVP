@@ -102,7 +102,7 @@ export default function CreateChildAppPage() {
               />
             </Field>
 
-            <Field label="Subdomain">
+            <Field label="Domain">
               <input
                 name="subdomain"
                 value={form.subdomain}
