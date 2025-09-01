@@ -17,7 +17,7 @@ export default function CreateChildAppPage() {
 
   const [form, setForm] = useState<Form>({
     appname: '',
-    domain: '',
+    subdomain: '',
     createdate: '',
     manager: '',
   });
