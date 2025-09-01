@@ -3,16 +3,17 @@
 import "@/utils/amplify-client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { fetchAuthSession, getCurrentUser } from "aws-amplify/auth";
 
 // Super-simple DataTable features: search, sort, pagination (client-side)
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || ""; // e.g., https://abc.execute-api.us-east-1.amazonaws.com
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 export default function DashboardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const created = searchParams.get("created");
 
-  // raw data
   type ChildApp = {
     id?: string;
     appname?: string;
@@ -23,73 +24,69 @@ export default function DashboardPage() {
     url?: string;
     [key: string]: unknown;
   };
+
   const [rows, setRows] = useState<ChildApp[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
 
-  // table UI state
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<"appname" | "subdomain" | "status" | "createdAt">("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-useEffect(() => {
-  let cancelled = false;
+  useEffect(() => {
+    let cancelled = false;
 
-  async function load() {
-    if (!API_BASE) {
-      if (!cancelled) {
-        setError("Set NEXT_PUBLIC_API_URL in your env file.");
-        setLoading(false);
+    async function load() {
+      if (!API_BASE) {
+        if (!cancelled) {
+          setError("Set NEXT_PUBLIC_API_URL in your env file.");
+          setLoading(false);
+        }
+        return;
       }
-      return;
+
+      try {
+        if (!cancelled) {
+          setLoading(true);
+          setError("");
+        }
+
+        await getCurrentUser();
+        const { tokens } = await fetchAuthSession({ forceRefresh: true });
+        const jwt =
+          tokens?.accessToken?.toString() ?? tokens?.idToken?.toString() ?? "";
+
+        if (!jwt) throw new Error("No authenticated session. Please sign in again.");
+
+        const res = await fetch(`${API_BASE}/child-apps`, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${jwt}` },
+          cache: "no-store",
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : data.items || data.Items || [];
+
+        if (!cancelled) setRows(list);
+      } catch (e: unknown) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Failed to load");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
 
-    try {
-      if (!cancelled) {
-        setLoading(true);
-        setError("");
-      }
+    load();
 
-      await getCurrentUser();
-      const { tokens } = await fetchAuthSession({ forceRefresh: true });
-      const jwt =
-        tokens?.accessToken?.toString() ?? tokens?.idToken?.toString() ?? "";
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-      if (!jwt) throw new Error("No authenticated session. Please sign in again.");
-
-      const res = await fetch(`${API_BASE}/child-apps`, {
-        method: "GET",
-        headers: { Authorization: `Bearer ${jwt}` },
-        cache: "no-store",
-      });
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const list = Array.isArray(data) ? data : data.items || data.Items || [];
-
-      if (!cancelled) setRows(list);
-    } catch (e: unknown) {
-      if (!cancelled) {
-        setError(e instanceof Error ? e.message : "Failed to load");
-      }
-    } finally {
-      if (!cancelled) setLoading(false);
-    }
-  }
-
-  load(); // initial fetch
-  const interval = setInterval(load, 10000); // re-fetch every 10 seconds
-
-  return () => {
-    cancelled = true;
-    clearInterval(interval);
-  };
-}, []);
-
-
-  // filter + sort + paginate (client-side)
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return rows;
@@ -172,6 +169,12 @@ useEffect(() => {
           </button>
         </div>
       </div>
+
+      {created === "1" && (
+        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 text-green-700 text-sm">
+          ✅ Child app created successfully!
+        </div>
+      )}
 
       <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
         <div className="mb-3 flex items-center justify-between">
@@ -263,7 +266,6 @@ useEffect(() => {
 function formatDate(v: string | number | Date | undefined): string {
   if (!v) return "-";
   try {
-    // Accept ISO string or number
     const d = new Date(v);
     if (isNaN(d.getTime())) return String(v);
     return d.toLocaleString();
