@@ -34,45 +34,60 @@ export default function DashboardPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  useEffect(() => {
-    async function load() {
-      if (!API_BASE) {
+useEffect(() => {
+  let cancelled = false;
+
+  async function load() {
+    if (!API_BASE) {
+      if (!cancelled) {
         setError("Set NEXT_PUBLIC_API_URL in your env file.");
         setLoading(false);
-        return;
       }
-      try {
+      return;
+    }
+
+    try {
+      if (!cancelled) {
         setLoading(true);
         setError("");
-        // Ensure we are signed in and get a fresh token (same as your working Create page)
-        await getCurrentUser();
-        const { tokens } = await fetchAuthSession({ forceRefresh: true });
-        const jwt =
-          tokens?.accessToken?.toString() ??
-          tokens?.idToken?.toString() ?? "";
-        if (!jwt) throw new Error("No authenticated session. Please sign in again.");
-
-        const res = await fetch(`${API_BASE}/child-apps`, {
-          method: "GET",
-          headers: { Authorization: `Bearer ${jwt}` },
-          cache: "no-store",
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json().catch(() => ({}));
-        const list = Array.isArray(data) ? data : data.items || data.Items || [];
-        setRows(list);
-      } catch (e: unknown) {
-        if (e instanceof Error) {
-          setError(e.message);
-        } else {
-          setError("Failed to load");
-        }
-      } finally {
-        setLoading(false);
       }
+
+      await getCurrentUser();
+      const { tokens } = await fetchAuthSession({ forceRefresh: true });
+      const jwt =
+        tokens?.accessToken?.toString() ?? tokens?.idToken?.toString() ?? "";
+
+      if (!jwt) throw new Error("No authenticated session. Please sign in again.");
+
+      const res = await fetch(`${API_BASE}/child-apps`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${jwt}` },
+        cache: "no-store",
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : data.items || data.Items || [];
+
+      if (!cancelled) setRows(list);
+    } catch (e: unknown) {
+      if (!cancelled) {
+        setError(e instanceof Error ? e.message : "Failed to load");
+      }
+    } finally {
+      if (!cancelled) setLoading(false);
     }
-    load();
-  }, []);
+  }
+
+  load(); // initial fetch
+  const interval = setInterval(load, 10000); // re-fetch every 10 seconds
+
+  return () => {
+    cancelled = true;
+    clearInterval(interval);
+  };
+}, []);
+
 
   // filter + sort + paginate (client-side)
   const filtered = useMemo(() => {
