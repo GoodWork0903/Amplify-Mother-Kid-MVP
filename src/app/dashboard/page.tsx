@@ -1,18 +1,29 @@
 "use client";
-
+export const dynamic = "force-dynamic";
 import "@/utils/amplify-client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense  } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { fetchAuthSession, getCurrentUser } from "aws-amplify/auth";
+
+function SuccessNotice() {
+  const searchParams = useSearchParams();
+  const created = searchParams.get("created");
+  if (created === "1") {
+    return (
+      <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 text-green-700 text-sm">
+        ✅ Child app created successfully!
+      </div>
+    );
+  }
+  return null;
+}
 
 // Super-simple DataTable features: search, sort, pagination (client-side)
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const created = searchParams.get("created");
 
   type ChildApp = {
     id?: string;
@@ -144,6 +155,10 @@ export default function DashboardPage() {
     <main className="p-6">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-2xl font-bold">Dashboard</h2>
+        <Suspense fallback={null}>
+          <SuccessNotice />
+        </Suspense>
+
         <div className="flex items-center gap-2">
           <input
             value={query}
@@ -169,12 +184,6 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
-
-      {created === "1" && (
-        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 text-green-700 text-sm">
-          ✅ Child app created successfully!
-        </div>
-      )}
 
       <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
         <div className="mb-3 flex items-center justify-between">
