@@ -17,7 +17,7 @@ export default function CreateChildAppPage() {
 
   const [form, setForm] = useState<Form>({
     appname: '',
-    subdomain: '',
+    domain: '',
     createdate: '',
     manager: '',
   });
@@ -102,7 +102,7 @@ export default function CreateChildAppPage() {
               />
             </Field>
 
-            <Field label="Domain">
+            <Field label="Subdomain">
               <input
                 name="subdomain"
                 value={form.subdomain}
