@@ -75,7 +75,7 @@ export default function CreateChildAppPage() {
         throw new Error(msg || `${res.status} ${res.statusText}`);
       }
 
-      router.push('/dashboard?created=1');
+      router.push('/dashboard');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message || 'Failed to create app');

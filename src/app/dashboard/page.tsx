@@ -1,30 +1,18 @@
 "use client";
-export const dynamic = "force-dynamic";
+
 import "@/utils/amplify-client";
 
-import { useEffect, useMemo, useState, Suspense  } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { fetchAuthSession, getCurrentUser } from "aws-amplify/auth";
 
-function SuccessNotice() {
-  const searchParams = useSearchParams();
-  const created = searchParams.get("created");
-  if (created === "1") {
-    return (
-      <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 text-green-700 text-sm">
-        ✅ Child app created successfully!
-      </div>
-    );
-  }
-  return null;
-}
-
 // Super-simple DataTable features: search, sort, pagination (client-side)
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || ""; // e.g., https://abc.execute-api.us-east-1.amazonaws.com
 
 export default function DashboardPage() {
   const router = useRouter();
 
+  // raw data
   type ChildApp = {
     id?: string;
     appname?: string;
@@ -35,11 +23,11 @@ export default function DashboardPage() {
     url?: string;
     [key: string]: unknown;
   };
-
   const [rows, setRows] = useState<ChildApp[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
 
+  // table UI state
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<"appname" | "subdomain" | "status" | "createdAt">("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -47,28 +35,21 @@ export default function DashboardPage() {
   const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
-    let cancelled = false;
-
     async function load() {
       if (!API_BASE) {
-        if (!cancelled) {
-          setError("Set NEXT_PUBLIC_API_URL in your env file.");
-          setLoading(false);
-        }
+        setError("Set NEXT_PUBLIC_API_URL in your env file.");
+        setLoading(false);
         return;
       }
-
       try {
-        if (!cancelled) {
-          setLoading(true);
-          setError("");
-        }
-
+        setLoading(true);
+        setError("");
+        // Ensure we are signed in and get a fresh token (same as your working Create page)
         await getCurrentUser();
         const { tokens } = await fetchAuthSession({ forceRefresh: true });
         const jwt =
-          tokens?.accessToken?.toString() ?? tokens?.idToken?.toString() ?? "";
-
+          tokens?.accessToken?.toString() ??
+          tokens?.idToken?.toString() ?? "";
         if (!jwt) throw new Error("No authenticated session. Please sign in again.");
 
         const res = await fetch(`${API_BASE}/child-apps`, {
@@ -76,28 +57,24 @@ export default function DashboardPage() {
           headers: { Authorization: `Bearer ${jwt}` },
           cache: "no-store",
         });
-
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         const list = Array.isArray(data) ? data : data.items || data.Items || [];
-
-        if (!cancelled) setRows(list);
+        setRows(list);
       } catch (e: unknown) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Failed to load");
+        if (e instanceof Error) {
+          setError(e.message);
+        } else {
+          setError("Failed to load");
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       }
     }
-
     load();
-
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
+  // filter + sort + paginate (client-side)
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return rows;
@@ -155,10 +132,6 @@ export default function DashboardPage() {
     <main className="p-6">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-2xl font-bold">Dashboard</h2>
-        <Suspense fallback={null}>
-          <SuccessNotice />
-        </Suspense>
-
         <div className="flex items-center gap-2">
           <input
             value={query}
@@ -275,6 +248,7 @@ export default function DashboardPage() {
 function formatDate(v: string | number | Date | undefined): string {
   if (!v) return "-";
   try {
+    // Accept ISO string or number
     const d = new Date(v);
     if (isNaN(d.getTime())) return String(v);
     return d.toLocaleString();
