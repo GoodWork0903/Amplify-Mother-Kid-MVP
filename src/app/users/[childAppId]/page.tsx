@@ -1,35 +1,31 @@
-"use client";
+'use client';
+
 export const dynamic = "force-dynamic";
 import "@/utils/amplify-client";
 
-import { useEffect, useMemo, useState  } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useParams } from "next/navigation";
 import { fetchAuthSession, getCurrentUser } from "aws-amplify/auth";
 
-
-// Super-simple DataTable features: search, sort, pagination (client-side)
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
-export default function DashboardPage() {
-  const router = useRouter();
+export default function ChildUsersPage() {
+  const { childAppId } = useParams();
 
-  type ChildApp = {
+  type UserItem = {
     id?: string;
-    appname?: string;
-    subdomain?: string;
-    manager?: string;
+    email?: string;
     status?: string;
-    createdAt?: string | number | Date;
-    url?: string;
+    createdAt?: string;
     [key: string]: unknown;
   };
 
-  const [rows, setRows] = useState<ChildApp[]>([]);
+  const [rows, setRows] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
 
   const [query, setQuery] = useState("");
-  const [sortKey, setSortKey] = useState<"appname" | "subdomain" | "status" | "createdAt">("createdAt");
+  const [sortKey, setSortKey] = useState<"id" | "email" | "status" | "createdAt">("email");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -38,19 +34,17 @@ export default function DashboardPage() {
     let cancelled = false;
 
     async function load() {
-      if (!API_BASE) {
+      if (!API_BASE || !childAppId) {
         if (!cancelled) {
-          setError("Set NEXT_PUBLIC_API_URL in your env file.");
+          setError("Missing API base URL or childAppId.");
           setLoading(false);
         }
         return;
       }
 
       try {
-        if (!cancelled) {
-          setLoading(true);
-          setError("");
-        }
+        setLoading(true);
+        setError("");
 
         await getCurrentUser();
         const { tokens } = await fetchAuthSession({ forceRefresh: true });
@@ -59,7 +53,7 @@ export default function DashboardPage() {
 
         if (!jwt) throw new Error("No authenticated session. Please sign in again.");
 
-        const res = await fetch(`${API_BASE}/child-apps`, {
+        const res = await fetch(`${API_BASE}/childusers/${childAppId}`, {
           method: "GET",
           headers: { Authorization: `Bearer ${jwt}` },
           cache: "no-store",
@@ -67,7 +61,7 @@ export default function DashboardPage() {
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        const list = Array.isArray(data) ? data : data.items || data.Items || [];
+        const list = Array.isArray(data) ? data : data.users || [];
 
         if (!cancelled) setRows(list);
       } catch (e: unknown) {
@@ -84,13 +78,13 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [childAppId]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return rows;
     return rows.filter((r) =>
-      [r.appname, r.subdomain, r.manager, r.status]
+      [r.email, r.status]
         .map((v) => (v ?? "").toString().toLowerCase())
         .some((txt) => txt.includes(q))
     );
@@ -142,13 +136,13 @@ export default function DashboardPage() {
   return (
     <main className="p-6">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-2xl font-bold">Dashboard</h2>
-      
+        <h2 className="text-2xl font-bold">Users of Child App</h2>
+
         <div className="flex items-center gap-2">
           <input
             value={query}
             onChange={(e) => { setQuery(e.target.value); setPage(1); }}
-            placeholder="Search by name, domain, status…"
+            placeholder="Search by email, status…"
             className="w-64 rounded-xl border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring"
           />
           <select
@@ -161,18 +155,12 @@ export default function DashboardPage() {
               <option key={n} value={n}>{n}/page</option>
             ))}
           </select>
-          <button
-            onClick={() => router.push("/child/create")}
-            className="rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
-          >
-            Create a child app
-          </button>
         </div>
       </div>
 
       <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Child apps</h3>
+          <h3 className="text-lg font-semibold">User List</h3>
           {!loading && (
             <span className="text-xs text-neutral-500">
               {total} result{total === 1 ? "" : "s"}
@@ -190,12 +178,10 @@ export default function DashboardPage() {
               <thead className="bg-neutral-50">
                 <tr className="[&>th]:px-4 [&>th]:py-3 [&>th]:text-left [&>th]:font-semibold [&>th]:text-neutral-700">
                   <th>No</th>
-                  <th><SortHeader label="App" col="appname" /></th>
-                  <th><SortHeader label="Domain" col="subdomain" /></th>
+                  <th><SortHeader label="Username" col="id" /></th>
+                  <th><SortHeader label="Email" col="email" /></th>
                   <th><SortHeader label="Status" col="status" /></th>
-                  <th><SortHeader label="Created" col="createdAt" /></th>
-                  <th>Open</th>
-                  <th>DetailView</th>
+                  <th><SortHeader label="Created At" col="createdAt" /></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200 bg-white">
@@ -207,20 +193,10 @@ export default function DashboardPage() {
                   pageRows.map((r, i) => (
                     <tr key={r.id || i} className="hover:bg-neutral-50">
                       <td className="px-4 py-3">{start + i + 1}</td>
-                      <td className="px-4 py-3">{r.appname || "-"}</td>
-                      <td className="px-4 py-3">{r.subdomain || "-"}</td>
-                      <td className="px-4 py-3">{r.status || "REQUESTED"}</td>
-                      <td className="px-4 py-3">{formatDate(r.createdAt)}</td>
-                      <td className="px-4 py-3">
-                        {r.status === "READY" && r.url ? (
-                          <a href={r.url} target="_blank" rel="noreferrer" className="text-blue-600 underline">Open</a>
-                        ) : (
-                          <span className="text-neutral-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                         <a href={`/users/${r.id}`} className="text-blue-600 underline">view</a>
-                      </td>
+                      <td className="px-4 py-3">{r.id || "-"}</td>
+                      <td className="px-4 py-3">{r.email || "-"}</td>
+                      <td className="px-4 py-3">{r.status || "-"}</td>
+                      <td className="px-4 py-3">{r.createdAt || "-"}</td>
                     </tr>
                   ))
                 )}
@@ -259,15 +235,4 @@ export default function DashboardPage() {
       </section>
     </main>
   );
-}
-
-function formatDate(v: string | number | Date | undefined): string {
-  if (!v) return "-";
-  try {
-    const d = new Date(v);
-    if (isNaN(d.getTime())) return String(v);
-    return d.toLocaleString();
-  } catch {
-    return String(v);
-  }
 }

@@ -25,16 +25,12 @@ export default function LoginPage() {
     <div style={{ maxWidth: 420, margin: '3rem auto' }}>
       <Authenticator
         signUpAttributes={[
-          // 'address',
-          //  'birthdate', 
            'email', 
            'name']}
         formFields={{
           signUp: {
-            name: { label: 'Full name', placeholder: 'Jane Doe', isRequired: true, order: 1 },
-            // birthdate: { label: 'Birth date', placeholder: 'YYYY-MM-DD', order: 2 },
+            name: { label: 'First name', placeholder: 'Jane', isRequired: true, order: 1 },
             email: { order: 3 },
-            // address: { label: 'Address', placeholder: 'Street, City, State/Region, Country', isRequired: true, order: 4 },
           },
         }}
       >

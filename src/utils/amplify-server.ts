@@ -18,7 +18,7 @@ export const { runWithAmplifyServerContext } = createServerRunner({
             domain,
             scopes: ["openid", "email", "profile"],
             // redirects are not used on the server but must be present
-            redirectSignIn: ["http://localhost:3000/"],
+            redirectSignIn: ["http://localhost:3000/login"],
             redirectSignOut: ["http://localhost:3000/"],
             responseType: "code",
           },
