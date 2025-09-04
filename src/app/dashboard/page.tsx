@@ -2,12 +2,10 @@
 export const dynamic = "force-dynamic";
 import "@/utils/amplify-client";
 
-import { useEffect, useMemo, useState  } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { fetchAuthSession, getCurrentUser } from "aws-amplify/auth";
 
-
-// Super-simple DataTable features: search, sort, pagination (client-side)
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 export default function DashboardPage() {
@@ -21,7 +19,11 @@ export default function DashboardPage() {
     status?: string;
     createdAt?: string | number | Date;
     url?: string;
-    [key: string]: unknown;
+    stats?: {
+      total: number;
+      active_30d: number;
+      login_today: number;
+    };
   };
 
   const [rows, setRows] = useState<ChildApp[]>([]);
@@ -54,8 +56,7 @@ export default function DashboardPage() {
 
         await getCurrentUser();
         const { tokens } = await fetchAuthSession({ forceRefresh: true });
-        const jwt =
-          tokens?.accessToken?.toString() ?? tokens?.idToken?.toString() ?? "";
+        const jwt = tokens?.accessToken?.toString() ?? tokens?.idToken?.toString() ?? "";
 
         if (!jwt) throw new Error("No authenticated session. Please sign in again.");
 
@@ -67,9 +68,30 @@ export default function DashboardPage() {
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        const list = Array.isArray(data) ? data : data.items || data.Items || [];
+        const list: ChildApp[] = Array.isArray(data) ? data : data.items || data.Items || [];
 
-        if (!cancelled) setRows(list);
+        // Fetch stats for each child app
+        const withStats = await Promise.all(list.map(async (app) => {
+          try {
+            const statsRes = await fetch(`${API_BASE}/childstats/${app.id}`, {
+              headers: { Authorization: `Bearer ${jwt}` },
+            });
+
+            const statsJson = await statsRes.json();
+
+            // Some APIs return nested JSON inside `body`
+            const stats = typeof statsJson.body === "string"
+              ? JSON.parse(statsJson.body)
+              : statsJson;
+
+            return { ...app, stats };
+          } catch (err) {
+            console.warn(`Failed to load stats for ${app.id}`, err);
+            return { ...app, stats: { total: -1, active_30d: -1, login_today: -1 } };
+          }
+        }));
+
+        if (!cancelled) setRows(withStats);
       } catch (e: unknown) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : "Failed to load");
@@ -143,7 +165,6 @@ export default function DashboardPage() {
     <main className="p-6">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-2xl font-bold">Dashboard</h2>
-      
         <div className="flex items-center gap-2">
           <input
             value={query}
@@ -188,48 +209,47 @@ export default function DashboardPage() {
           <div className="overflow-hidden rounded-xl border border-neutral-200">
             <table className="min-w-full divide-y divide-neutral-200 text-sm">
               <thead className="bg-neutral-50">
-                <tr className="[&>th]:px-4 [&>th]:py-3 [&>th]:text-left [&>th]:font-semibold [&>th]:text-neutral-700">
-                  <th>No</th>
-                  <th><SortHeader label="App" col="appname" /></th>
-                  <th><SortHeader label="Domain" col="subdomain" /></th>
-                  <th><SortHeader label="Status" col="status" /></th>
-                  <th><SortHeader label="Created" col="createdAt" /></th>
-                  <th>Open</th>
-                  <th>DetailView</th>
+                <tr>
+                  <th className="px-4 py-3 text-left">No</th>
+                  <th className="px-4 py-3 text-left"><SortHeader label="App" col="appname" /></th>
+                  <th className="px-4 py-3 text-left"><SortHeader label="Domain" col="subdomain" /></th>
+                  <th className="px-4 py-3 text-left"><SortHeader label="Status" col="status" /></th>
+                  <th className="px-4 py-3 text-left"><SortHeader label="Created" col="createdAt" /></th>
+                  <th className="px-4 py-3 text-left">Users</th>
+                  <th className="px-4 py-3 text-left">Active</th>
+                  <th className="px-4 py-3 text-left">Today</th>
+                  <th className="px-4 py-3 text-left">Open</th>
+                  <th className="px-4 py-3 text-left">Detail</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200 bg-white">
-                {pageRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="p-6 text-center text-neutral-500">No results.</td>
+                {pageRows.map((r, i) => (
+                  <tr key={r.id || i} className="hover:bg-neutral-50">
+                    <td className="px-4 py-3">{start + i + 1}</td>
+                    <td className="px-4 py-3">{r.appname || "-"}</td>
+                    <td className="px-4 py-3">{r.subdomain || "-"}</td>
+                    <td className="px-4 py-3">{r.status || "REQUESTED"}</td>
+                    <td className="px-4 py-3">{formatDate(r.createdAt)}</td>
+                    <td className="px-4 py-3">{showStat(r.stats?.total)}</td>
+                    <td className="px-4 py-3">{showStat(r.stats?.active_30d)}</td>
+                    <td className="px-4 py-3">{showStat(r.stats?.login_today)}</td>
+                    <td className="px-4 py-3">
+                      {r.status === "READY" && r.url ? (
+                        <a href={r.url} target="_blank" rel="noreferrer" className="text-blue-600 underline">Open</a>
+                      ) : (
+                        <span className="text-neutral-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <a href={`/users/${r.id}`} className="text-blue-600 underline">View</a>
+                    </td>
                   </tr>
-                ) : (
-                  pageRows.map((r, i) => (
-                    <tr key={r.id || i} className="hover:bg-neutral-50">
-                      <td className="px-4 py-3">{start + i + 1}</td>
-                      <td className="px-4 py-3">{r.appname || "-"}</td>
-                      <td className="px-4 py-3">{r.subdomain || "-"}</td>
-                      <td className="px-4 py-3">{r.status || "REQUESTED"}</td>
-                      <td className="px-4 py-3">{formatDate(r.createdAt)}</td>
-                      <td className="px-4 py-3">
-                        {r.status === "READY" && r.url ? (
-                          <a href={r.url} target="_blank" rel="noreferrer" className="text-blue-600 underline">Open</a>
-                        ) : (
-                          <span className="text-neutral-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                         <a href={`/users/${r.id}`} className="text-blue-600 underline">view</a>
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
           </div>
         )}
 
-        {/* Pagination */}
         {!loading && total > 0 && (
           <div className="mt-3 flex items-center justify-between text-sm">
             <span className="text-neutral-600">
@@ -243,9 +263,7 @@ export default function DashboardPage() {
               >
                 Prev
               </button>
-              <span>
-                Page {currentPage} / {pageCount}
-              </span>
+              <span>Page {currentPage} / {pageCount}</span>
               <button
                 onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
                 disabled={currentPage === pageCount}
@@ -270,4 +288,10 @@ function formatDate(v: string | number | Date | undefined): string {
   } catch {
     return String(v);
   }
+}
+
+function showStat(value: number | undefined) {
+  if (value === undefined) return "…";
+  if (value === -1) return "×";
+  return value;
 }
