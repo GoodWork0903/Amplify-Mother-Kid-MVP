@@ -1,9 +1,9 @@
 'use client';
-
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import '@/utils/amplify-client';
-import { fetchAuthSession, getCurrentUser } from 'aws-amplify/auth';
+import { fetchAuthSession } from 'aws-amplify/auth';
+import { useAuth } from '@/contexts/AuthContext';
 
 type Form = {
   appname: string;
@@ -14,6 +14,7 @@ type Form = {
 
 export default function CreateChildAppPage() {
   const router = useRouter();
+  const { isAuthenticated, loading: authLoading } = useAuth();
 
   const [form, setForm] = useState<Form>({
     appname: '',
@@ -24,19 +25,12 @@ export default function CreateChildAppPage() {
 
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      try {
-        await getCurrentUser(); // throws if not signed in
-        setReady(true);
-      } catch {
-        setError('You are not signed in. Please sign in again.');
-        setReady(true);
-      }
-    })();
-  }, []);
+    if (!isAuthenticated && !authLoading) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, authLoading, router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -52,7 +46,6 @@ export default function CreateChildAppPage() {
       const apiBase = process.env.NEXT_PUBLIC_API_URL;
       if (!apiBase) throw new Error('NEXT_PUBLIC_API_URL is not set');
 
-      await getCurrentUser();
       const { tokens } = await fetchAuthSession({ forceRefresh: true });
 
       const jwt =
@@ -84,13 +77,27 @@ export default function CreateChildAppPage() {
     }
   };
 
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+        <p>Checking authentication...</p>
+      </div>
+    );
+  }
+
+  // Redirect if not authenticated
+  if (!isAuthenticated) {
+    return null; // Will redirect in useEffect
+  }
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-neutral-50 px-4">
       <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-md">
         <h2 className="mb-6 text-center text-2xl font-bold">Create Child App</h2>
 
-        {ready ? (
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
             <Field label="App Name">
               <input
                 name="appname"
@@ -145,9 +152,6 @@ export default function CreateChildAppPage() {
               {pending ? 'Creating…' : 'Create'}
             </button>
           </form>
-        ) : (
-          <p className="text-sm text-neutral-600">Checking session…</p>
-        )}
       </div>
 
       <style jsx>{`

@@ -2,14 +2,52 @@
 export const dynamic = "force-dynamic";
 import "@/utils/amplify-client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { fetchAuthSession, getCurrentUser } from "aws-amplify/auth";
+import { fetchAuthSession } from "aws-amplify/auth";
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  Chip,
+  IconButton,
+  Avatar,
+  // LinearProgress,
+  Alert,
+  // Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  TextField,
+  InputAdornment,
+  Tooltip,
+  Fab,
+  CircularProgress,
+} from '@mui/material';
+import {
+  Add as AddIcon,
+  Search as SearchIcon,
+  Apps as AppsIcon,
+  People as PeopleIcon,
+  TrendingUp as TrendingUpIcon,
+  Schedule as ScheduleIcon,
+  OpenInNew as OpenIcon,
+  Visibility as ViewIcon,
+  Refresh as RefreshIcon,
+} from '@mui/icons-material';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { isAuthenticated, loading: authLoading } = useAuth();
 
   type ChildApp = {
     id?: string;
@@ -29,32 +67,27 @@ export default function DashboardPage() {
   const [rows, setRows] = useState<ChildApp[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
+  const [refreshing, setRefreshing] = useState(false);
 
   const [query, setQuery] = useState("");
-  const [sortKey, setSortKey] = useState<"appname" | "subdomain" | "status" | "createdAt">("createdAt");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
+  const loadData = useCallback(async (isRefresh = false) => {
       if (!API_BASE) {
-        if (!cancelled) {
           setError("Set NEXT_PUBLIC_API_URL in your env file.");
           setLoading(false);
-        }
         return;
       }
 
       try {
-        if (!cancelled) {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
           setLoading(true);
+      }
           setError("");
-        }
 
-        await getCurrentUser();
         const { tokens } = await fetchAuthSession({ forceRefresh: true });
         const jwt = tokens?.accessToken?.toString() ?? tokens?.idToken?.toString() ?? "";
 
@@ -91,22 +124,26 @@ export default function DashboardPage() {
           }
         }));
 
-        if (!cancelled) setRows(withStats);
+      setRows(withStats);
       } catch (e: unknown) {
-        if (!cancelled) {
           setError(e instanceof Error ? e.message : "Failed to load");
-        }
       } finally {
-        if (!cancelled) setLoading(false);
-      }
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Don't load data if not authenticated
+    if (!isAuthenticated && !authLoading) {
+      router.push('/login');
+      return;
     }
 
-    load();
+    if (authLoading) return;
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    loadData();
+  }, [isAuthenticated, authLoading, router, loadData]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -118,164 +155,304 @@ export default function DashboardPage() {
     );
   }, [rows, query]);
 
-  const sorted = useMemo(() => {
-    const copy = [...filtered];
-    copy.sort((a, b) => {
-      const av = (a?.[sortKey] ?? "").toString();
-      const bv = (b?.[sortKey] ?? "").toString();
-      if (av < bv) return sortDir === "asc" ? -1 : 1;
-      if (av > bv) return sortDir === "asc" ? 1 : -1;
-      return 0;
-    });
-    return copy;
-  }, [filtered, sortKey, sortDir]);
-
-  const total = sorted.length;
-  const pageCount = Math.max(1, Math.ceil(total / pageSize));
-  const currentPage = Math.min(page, pageCount);
-  const start = (currentPage - 1) * pageSize;
+  const total = filtered.length;
+  const start = page * pageSize;
   const end = start + pageSize;
-  const pageRows = sorted.slice(start, end);
+  const pageRows = filtered.slice(start, end);
 
-  function onSort(col: typeof sortKey) {
-    if (sortKey === col) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(col);
-      setSortDir("asc");
-    }
-  }
+  // Calculate statistics
+  const totalApps = rows.length;
+  const activeApps = rows.filter(app => app.status === 'READY').length;
+  const totalUsers = rows.reduce((sum, app) => sum + (app.stats?.total || 0), 0);
+  const activeUsers = rows.reduce((sum, app) => sum + (app.stats?.active_30d || 0), 0);
 
-  function SortHeader({ label, col }: { label: string; col: typeof sortKey }) {
-    const active = sortKey === col;
-    const arrow = !active ? "" : sortDir === "asc" ? "▲" : "▼";
+
+  // Show loading while checking authentication
+  if (authLoading) {
     return (
-      <button
-        onClick={() => onSort(col)}
-        className={`inline-flex items-center gap-1 hover:underline ${active ? "text-black" : "text-neutral-700"}`}
-        title="Sort"
-      >
-        <span>{label}</span>
-        <span className="text-xs">{arrow}</span>
-      </button>
+      <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" minHeight="100vh">
+        <CircularProgress size={60} />
+        <Typography variant="h6" color="text.secondary" sx={{ mt: 2 }}>
+          Checking authentication...
+        </Typography>
+      </Box>
     );
   }
 
-  return (
-    <main className="p-6">
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-2xl font-bold">Dashboard</h2>
-        <div className="flex items-center gap-2">
-          <input
-            value={query}
-            onChange={(e) => { setQuery(e.target.value); setPage(1); }}
-            placeholder="Search by name, domain, status…"
-            className="w-64 rounded-xl border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring"
-          />
-          <select
-            value={pageSize}
-            onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-            className="rounded-xl border border-neutral-300 px-3 py-2 text-sm"
-            title="Rows per page"
-          >
-            {[5, 10, 20, 50].map((n) => (
-              <option key={n} value={n}>{n}/page</option>
-            ))}
-          </select>
-          <button
-            onClick={() => router.push("/child/create")}
-            className="rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
-          >
-            Create a child app
-          </button>
-        </div>
-      </div>
+  // Redirect if not authenticated
+  if (!isAuthenticated) {
+    return null; // Will redirect in useEffect
+  }
 
-      <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Child apps</h3>
-          {!loading && (
-            <span className="text-xs text-neutral-500">
-              {total} result{total === 1 ? "" : "s"}
-            </span>
-          )}
-        </div>
+  return (
+    <Box sx={{ p: 3, backgroundColor: 'background.default', minHeight: '100vh' }}>
+      {/* Header */}
+      <Box sx={{ mb: 4 }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+          <Typography variant="h4" component="h1" fontWeight="bold" color="primary">
+            Dashboard
+          </Typography>
+          <Box display="flex" gap={2}>
+            <Tooltip title="Refresh Data">
+              <IconButton 
+                onClick={() => loadData(true)} 
+                disabled={refreshing}
+                color="primary"
+              >
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+            onClick={() => router.push("/child/create")}
+              sx={{ borderRadius: 2 }}
+            >
+              Create App
+            </Button>
+          </Box>
+        </Box>
+
+        {/* Search Bar */}
+        <TextField
+          fullWidth
+          placeholder="Search apps by name, domain, or status..."
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setPage(0); }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon color="action" />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ maxWidth: 400 }}
+        />
+      </Box>
+
+      {/* Statistics Cards */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 3, mb: 4 }}>
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="white" gutterBottom variant="h6">
+                  Total Apps
+                </Typography>
+                <Typography variant="h4" color="white" fontWeight="bold">
+                  {totalApps}
+                </Typography>
+              </Box>
+              <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: 56, height: 56 }}>
+                <AppsIcon sx={{ fontSize: 30, color: 'white' }} />
+              </Avatar>
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="white" gutterBottom variant="h6">
+                  Active Apps
+                </Typography>
+                <Typography variant="h4" color="white" fontWeight="bold">
+                  {activeApps}
+                </Typography>
+              </Box>
+              <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: 56, height: 56 }}>
+                <TrendingUpIcon sx={{ fontSize: 30, color: 'white' }} />
+              </Avatar>
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="white" gutterBottom variant="h6">
+                  Total Users
+                </Typography>
+                <Typography variant="h4" color="white" fontWeight="bold">
+                  {totalUsers.toLocaleString()}
+                </Typography>
+              </Box>
+              <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: 56, height: 56 }}>
+                <PeopleIcon sx={{ fontSize: 30, color: 'white' }} />
+              </Avatar>
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="white" gutterBottom variant="h6">
+                  Active Users
+                </Typography>
+                <Typography variant="h4" color="white" fontWeight="bold">
+                  {activeUsers.toLocaleString()}
+                </Typography>
+              </Box>
+              <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: 56, height: 56 }}>
+                <ScheduleIcon sx={{ fontSize: 30, color: 'white' }} />
+              </Avatar>
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
+
+      {/* Apps Table */}
+      <Card>
+        <CardContent sx={{ p: 0 }}>
+          <Box sx={{ p: 3, borderBottom: 1, borderColor: 'divider' }}>
+            <Typography variant="h6" fontWeight="bold">
+              Child Applications
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {total} application{total !== 1 ? 's' : ''} found
+            </Typography>
+          </Box>
 
         {loading ? (
-          <p className="text-sm text-neutral-500">Loading…</p>
+            <Box sx={{ p: 4, textAlign: 'center' }}>
+              <CircularProgress />
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                Loading applications...
+              </Typography>
+            </Box>
         ) : error ? (
-          <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
-        ) : (
-          <div className="overflow-hidden rounded-xl border border-neutral-200">
-            <table className="min-w-full divide-y divide-neutral-200 text-sm">
-              <thead className="bg-neutral-50">
-                <tr>
-                  <th className="px-4 py-3 text-left">No</th>
-                  <th className="px-4 py-3 text-left"><SortHeader label="App" col="appname" /></th>
-                  <th className="px-4 py-3 text-left"><SortHeader label="Domain" col="subdomain" /></th>
-                  <th className="px-4 py-3 text-left"><SortHeader label="Status" col="status" /></th>
-                  <th className="px-4 py-3 text-left"><SortHeader label="Created" col="createdAt" /></th>
-                  <th className="px-4 py-3 text-left">Users</th>
-                  <th className="px-4 py-3 text-left">Active</th>
-                  <th className="px-4 py-3 text-left">Today</th>
-                  <th className="px-4 py-3 text-left">Open</th>
-                  <th className="px-4 py-3 text-left">Detail</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-200 bg-white">
-                {pageRows.map((r, i) => (
-                  <tr key={r.id || i} className="hover:bg-neutral-50">
-                    <td className="px-4 py-3">{start + i + 1}</td>
-                    <td className="px-4 py-3">{r.appname || "-"}</td>
-                    <td className="px-4 py-3">{r.subdomain || "-"}</td>
-                    <td className="px-4 py-3">{r.status || "REQUESTED"}</td>
-                    <td className="px-4 py-3">{formatDate(r.createdAt)}</td>
-                    <td className="px-4 py-3">{showStat(r.stats?.total)}</td>
-                    <td className="px-4 py-3">{showStat(r.stats?.active_30d)}</td>
-                    <td className="px-4 py-3">{showStat(r.stats?.login_today)}</td>
-                    <td className="px-4 py-3">
-                      {r.status === "READY" && r.url ? (
-                        <a href={r.url} target="_blank" rel="noreferrer" className="text-blue-600 underline">Open</a>
-                      ) : (
-                        <span className="text-neutral-400">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <a href={`/users/${r.id}`} className="text-blue-600 underline">View</a>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+            <Box sx={{ p: 3 }}>
+              <Alert severity="error">{error}</Alert>
+            </Box>
+          ) : (
+            <>
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell align="center">App Name</TableCell>
+                      <TableCell align="center">Domain</TableCell>
+                      <TableCell align="center">Status</TableCell>
+                      <TableCell align="center">Created</TableCell>
+                      <TableCell align="center">Users</TableCell>
+                      <TableCell align="center">Active (30d)</TableCell>
+                      <TableCell align="center">Today</TableCell>
+                      <TableCell align="center">Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {pageRows.map((app, index) => (
+                      <TableRow key={app.id || index} hover>
+                        <TableCell align="center">
+                          <Box display="flex" alignItems="center" gap={2}>
+                            <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>
+                              <AppsIcon fontSize="small" />
+                            </Avatar>
+                            <Typography variant="body2" fontWeight="medium">
+                              {app.appname || 'Unnamed App'}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" color="text.secondary">
+                            {app.subdomain || '-'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={app.status || 'REQUESTED'}
+                            color={
+                              app.status === 'READY' ? 'success' :
+                              app.status === 'REQUESTED' ? 'warning' : 'default'
+                            }
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" color="text.secondary">
+                            {formatDate(app.createdAt)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Typography variant="body2" fontWeight="medium">
+                            {showStat(app.stats?.total)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Typography variant="body2" fontWeight="medium">
+                            {showStat(app.stats?.active_30d)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Typography variant="body2" fontWeight="medium">
+                            {showStat(app.stats?.login_today)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Box display="flex" gap={1}>
+                            {app.status === 'READY' && app.url && (
+                              <Tooltip title="Open App">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => window.open(app.url, '_blank')}
+                                  color="primary"
+                                >
+                                  <OpenIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            <Tooltip title="View Details">
+                              <IconButton
+                                size="small"
+                                onClick={() => router.push(`/users/${app.id}`)}
+                                color="primary"
+                              >
+                                <ViewIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
 
-        {!loading && total > 0 && (
-          <div className="mt-3 flex items-center justify-between text-sm">
-            <span className="text-neutral-600">
-              Showing {Math.min(start + 1, total)}–{Math.min(end, total)} of {total}
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="rounded-lg border border-neutral-300 px-3 py-1 disabled:opacity-50"
-              >
-                Prev
-              </button>
-              <span>Page {currentPage} / {pageCount}</span>
-              <button
-                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-                disabled={currentPage === pageCount}
-                className="rounded-lg border border-neutral-300 px-3 py-1 disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
-      </section>
-    </main>
+              <TablePagination
+                component="div"
+                count={total}
+                page={page}
+                onPageChange={(_, newPage) => setPage(newPage)}
+                rowsPerPage={pageSize}
+                onRowsPerPageChange={(e) => {
+                  setPageSize(parseInt(e.target.value, 10));
+                  setPage(0);
+                }}
+                rowsPerPageOptions={[5, 10, 25, 50]}
+              />
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Floating Action Button */}
+      <Fab
+        color="primary"
+        aria-label="add"
+        sx={{
+          position: 'fixed',
+          bottom: 16,
+          right: 16,
+        }}
+        onClick={() => router.push("/child/create")}
+      >
+        <AddIcon />
+      </Fab>
+    </Box>
   );
 }
 

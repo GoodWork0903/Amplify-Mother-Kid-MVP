@@ -161,6 +161,13 @@ export default function ChildUsersPage() {
       <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-lg font-semibold">User List</h3>
+          <a
+            href={`/users/${childAppId}/add`}
+            className="text-blue-600 underline"
+          >
+            Add User
+          </a>
+
           {!loading && (
             <span className="text-xs text-neutral-500">
               {total} result{total === 1 ? "" : "s"}
