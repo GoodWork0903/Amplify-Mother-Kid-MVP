@@ -377,17 +377,17 @@ export default function DashboardPage() {
                             {formatDate(app.createdAt)}
                           </Typography>
                         </TableCell>
-                        <TableCell align="right">
+                        <TableCell align="center">
                           <Typography variant="body2" fontWeight="medium">
                             {showStat(app.stats?.total)}
                           </Typography>
                         </TableCell>
-                        <TableCell align="right">
+                        <TableCell align="center">
                           <Typography variant="body2" fontWeight="medium">
                             {showStat(app.stats?.active_30d)}
                           </Typography>
                         </TableCell>
-                        <TableCell align="right">
+                        <TableCell align="center">
                           <Typography variant="body2" fontWeight="medium">
                             {showStat(app.stats?.login_today)}
                           </Typography>
