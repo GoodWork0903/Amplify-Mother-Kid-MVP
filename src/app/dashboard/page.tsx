@@ -357,12 +357,12 @@ export default function DashboardPage() {
                             </Typography>
                           </Box>
                         </TableCell>
-                        <TableCell>
+                        <TableCell align="center">
                           <Typography variant="body2" color="text.secondary">
                             {app.subdomain || '-'}
                           </Typography>
                         </TableCell>
-                        <TableCell>
+                        <TableCell align="center">
                           <Chip
                             label={app.status || 'REQUESTED'}
                             color={
@@ -372,7 +372,7 @@ export default function DashboardPage() {
                             size="small"
                           />
                         </TableCell>
-                        <TableCell>
+                        <TableCell align="center">
                           <Typography variant="body2" color="text.secondary">
                             {formatDate(app.createdAt)}
                           </Typography>
