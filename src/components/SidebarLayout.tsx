@@ -29,6 +29,7 @@ import {
   Apps as AppsIcon,
   Settings as SettingsIcon,
   Notifications as NotificationsIcon,
+  AddBox as AdoptIcon,
 } from '@mui/icons-material';
 
 const drawerWidth = 280;
@@ -36,6 +37,7 @@ const drawerWidth = 280;
 const menuItems = [
   { text: 'Dashboard', href: '/dashboard', icon: DashboardIcon, badge: null },
   { text: 'Create App', href: '/child/create', icon: AddIcon, badge: null },
+  { text: 'Adopt App', href: '/child/adopt', icon: AdoptIcon, badge: null },
   { text: 'All Users', href: '/users/global', icon: PeopleIcon, badge: null },
   { text: 'Settings', href: '/settings', icon: SettingsIcon, badge: null },
 ];

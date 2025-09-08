@@ -15,9 +15,7 @@ import {
   Chip,
   IconButton,
   Avatar,
-  // LinearProgress,
   Alert,
-  // Paper,
   Table,
   TableBody,
   TableCell,
@@ -41,6 +39,7 @@ import {
   OpenInNew as OpenIcon,
   Visibility as ViewIcon,
   Refresh as RefreshIcon,
+  AddBox as AdoptIcon,
 } from '@mui/icons-material';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -48,6 +47,16 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 export default function DashboardPage() {
   const router = useRouter();
   const { isAuthenticated, loading: authLoading } = useAuth();
+
+  // Debug: Check environment variables
+  console.log('Environment variables check:', {
+    userPoolId: !!process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID,
+    userPoolClientId: !!process.env.NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID,
+    domain: !!process.env.NEXT_PUBLIC_COGNITO_DOMAIN,
+    redirectIn: !!process.env.NEXT_PUBLIC_OAUTH_REDIRECT_IN,
+    redirectOut: !!process.env.NEXT_PUBLIC_OAUTH_REDIRECT_OUT,
+    apiUrl: !!process.env.NEXT_PUBLIC_API_URL
+  });
 
   type ChildApp = {
     id?: string;
@@ -439,19 +448,6 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Floating Action Button */}
-      <Fab
-        color="primary"
-        aria-label="add"
-        sx={{
-          position: 'fixed',
-          bottom: 16,
-          right: 16,
-        }}
-        onClick={() => router.push("/child/create")}
-      >
-        <AddIcon />
-      </Fab>
     </Box>
   );
 }
