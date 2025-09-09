@@ -10,6 +10,9 @@ type Form = {
   subdomain: string;
   createdate: string; // yyyy-mm-dd
   manager: string;
+  category: string;
+  repoUrl: string;
+  repoTokenArn: string;
 };
 
 export default function CreateChildAppPage() {
@@ -21,6 +24,9 @@ export default function CreateChildAppPage() {
     subdomain: '',
     createdate: '',
     manager: '',
+    category: 'default',
+    repoUrl: '',
+    repoTokenArn: '',
   });
 
   const [pending, setPending] = useState(false);
