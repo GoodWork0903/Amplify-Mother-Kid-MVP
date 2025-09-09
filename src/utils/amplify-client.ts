@@ -11,8 +11,13 @@ Amplify.configure(
           oauth: {
             domain: process.env.NEXT_PUBLIC_COGNITO_DOMAIN!,
             scopes: ['openid', 'email'],
-            redirectSignIn: [process.env.NEXT_PUBLIC_OAUTH_REDIRECT_IN!],
-            redirectSignOut: [process.env.NEXT_PUBLIC_OAUTH_REDIRECT_OUT!],
+            redirectSignIn: [
+            "http://localhost:3000/",
+            "https://main.d32ea1w06mrsmk.amplifyapp.com/login"
+            ],
+            redirectSignOut: [
+                       "http://localhost:3000/",
+          "https://main.d32ea1w06mrsmk.amplifyapp.com/"],
             responseType: 'code',
           },
         },
