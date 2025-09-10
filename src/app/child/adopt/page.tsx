@@ -27,11 +27,10 @@ import {
 
 type Form = {
   appname: string;
-  url: string;
+  subdomain: string;
   repoUrl: string;
   category: string;
-  environment: string;
-  description: string;
+  githubToken: string;
   createdAt: string;
   manager: string;
 };
@@ -41,11 +40,10 @@ export default function AdoptChildAppPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [form, setForm] = useState<Form>({
     appname: '',
-    url: '',
+    subdomain: '',
     repoUrl: '',
     category: '',
-    environment: '',
-    description: '',
+    githubToken: '',
     createdAt: new Date().toISOString().split('T')[0], // Default to today
     manager: '',
   });
@@ -79,10 +77,11 @@ export default function AdoptChildAppPage() {
         appname: form.appname,
         status: 'ADOPTED',
         repoUrl: form.repoUrl,
-        liveUrl: form.url,
-        env: form.environment ? form.environment.toUpperCase() : '',
-        category: form.category,
-        createdBy: form.manager,
+        subdomain: form.subdomain,
+        category: "adopted",
+        createdate: form.createdAt,
+        manager: form.manager,
+        githubToken: form.githubToken,
       };
 
       const response = await fetch(`${apiBase}/child-apps`, {
@@ -115,11 +114,10 @@ export default function AdoptChildAppPage() {
   const handleReset = () => {
     setForm({
       appname: '',
-      url: '',
+      subdomain: '',
       repoUrl: '',
       category: '',
-      environment: '',
-      description: '',
+      githubToken: '',
       createdAt: new Date().toISOString().split('T')[0],
       manager: '',
     });
@@ -179,8 +177,8 @@ export default function AdoptChildAppPage() {
               <TextField
                 fullWidth
                 label="App URL"
-                name="url"
-                value={form.url}
+                name="subdomain"
+                value={form.subdomain}
                 onChange={handleChange}
                 required
                 placeholder="https://example.com"
@@ -192,22 +190,6 @@ export default function AdoptChildAppPage() {
                   ),
                 }}
               />
-
-              {/* Environment */}
-              <TextField
-                select
-                fullWidth
-                label="Environment"
-                name="environment"
-                value={form.environment}
-                onChange={handleChange}
-                required
-              >
-                <MenuItem value="">Select environment</MenuItem>
-                <MenuItem value="development">Development</MenuItem>
-                <MenuItem value="staging">Staging</MenuItem>
-                <MenuItem value="production">Production</MenuItem>
-              </TextField>
 
               {/* Created At */}
               <TextField
@@ -246,31 +228,23 @@ export default function AdoptChildAppPage() {
                   ),
                 }}
               />
-
-              {/* Description */}
+              {/* Repo URL */}
               <TextField
                 fullWidth
-                label="Description"
-                name="description"
-                value={form.description}
+                label="githubToken"
+                name="githubToken"
+                value={form.githubToken}
                 onChange={handleChange}
-                placeholder="Brief description of the app"
-                multiline
-                minRows={3}
-                sx={{ gridColumn: { xs: '1', md: '1 / -1' } }}
+             
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <LanguageIcon color="action" />
+                    </InputAdornment>
+                  ),
+                }}
               />
-
-              {/* Category */}
-              <TextField
-                fullWidth
-                label="Category"
-                name="category"
-                value={form.category}
-                onChange={handleChange}
-                placeholder="e.g., CRM, Marketing, Internal"
-              />
-
-              {/* Manager (Created By) */}
+               {/* Manager (Created By) */}
               <TextField
                 fullWidth
                 label="Manager"
