@@ -1,0 +1,13 @@
+# deps & builds
+node_modules/
+.next/
+out/
+
+# env/secrets
+.env*
+!.env.example
+
+# logs
+npm-debug.log*
+yarn-*.log
+pnpm-debug.log*

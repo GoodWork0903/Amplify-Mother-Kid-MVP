@@ -29,8 +29,9 @@ type Form = {
   appname: string;
   url: string;
   repoUrl: string;
+  category: string;
   environment: string;
-  repoTokenArn: string;
+  description: string;
   createdAt: string;
   manager: string;
 };
@@ -42,8 +43,9 @@ export default function AdoptChildAppPage() {
     appname: '',
     url: '',
     repoUrl: '',
+    category: '',
     environment: '',
-    repoTokenArn: '',
+    description: '',
     createdAt: new Date().toISOString().split('T')[0], // Default to today
     manager: '',
   });
@@ -77,13 +79,10 @@ export default function AdoptChildAppPage() {
         appname: form.appname,
         status: 'ADOPTED',
         repoUrl: form.repoUrl,
-        subdomain: form.url,
+        liveUrl: form.url,
         env: form.environment ? form.environment.toUpperCase() : '',
-        category: "adopted",
+        category: form.category,
         createdBy: form.manager,
-        createdate: form.createdAt,
-        manager:form.manager,
-        repoTokenArn: form.repoTokenArn,
       };
 
       const response = await fetch(`${apiBase}/child-apps`, {
@@ -118,8 +117,9 @@ export default function AdoptChildAppPage() {
       appname: '',
       url: '',
       repoUrl: '',
+      category: '',
       environment: '',
-      repoTokenArn: '',
+      description: '',
       createdAt: new Date().toISOString().split('T')[0],
       manager: '',
     });
@@ -247,17 +247,27 @@ export default function AdoptChildAppPage() {
                 }}
               />
 
-              {/* repoTokenArn */}
+              {/* Description */}
               <TextField
                 fullWidth
-                label="repoTokenArn"
-                name="repoTokenArn"
-                value={form.repoTokenArn}
+                label="Description"
+                name="description"
+                value={form.description}
                 onChange={handleChange}
                 placeholder="Brief description of the app"
                 multiline
                 minRows={3}
                 sx={{ gridColumn: { xs: '1', md: '1 / -1' } }}
+              />
+
+              {/* Category */}
+              <TextField
+                fullWidth
+                label="Category"
+                name="category"
+                value={form.category}
+                onChange={handleChange}
+                placeholder="e.g., CRM, Marketing, Internal"
               />
 
               {/* Manager (Created By) */}
