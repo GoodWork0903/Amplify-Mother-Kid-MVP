@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import '@/utils/amplify-client';
+import ConnectGithubButton from '@/components/ConnectGithubButton';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -260,7 +261,7 @@ export default function AdoptChildAppPage() {
                   {error}
                 </Alert>
               )}
-
+              <ConnectGithubButton/> 
               {/* Submit Button */}
               <Box display="flex" gap={2} justifyContent="flex-end">
                 <Button
