@@ -35,7 +35,12 @@ export default function PickRepo() {
           headers: { Authorization: `Bearer ${jwt}` },
         });
         if (!res.ok) throw new Error(`Failed to load repos (${res.status})`);
-        const data = await res.json();
+        let data = await res.json();
+        if typeof data === "string") {
+          data = JSON.parse(data);
+        } else if (data.body) {
+          data = JSON.parse(data.body);
+        }
         setRepos(Array.isArray(data) ? data : []);
       } catch (err: unknown) {
         console.error("Failed to load repos", err);
