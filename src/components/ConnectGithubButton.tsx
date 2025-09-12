@@ -1,5 +1,5 @@
-// components/ConnectGithubButton.tsx
 "use client";
+// components/ConnectGithubButton.tsx
 import { useRouter } from "next/navigation";
 
 export default function ConnectGithubButton() {

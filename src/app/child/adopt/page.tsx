@@ -1,11 +1,16 @@
 'use client';
 
+
+export const dynamic = 'force-dynamic';
+
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import '@/utils/amplify-client';
 import ConnectGithubButton from '@/components/ConnectGithubButton';
+import PickRepo from '@/components/PickRepo';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSearchParams } from "next/navigation";
 import {
   Box,
   Card,
@@ -36,7 +41,9 @@ type Form = {
   manager: string;
 };
 
-export default function AdoptChildAppPage() {
+function AdoptChildAppPageInner() {
+  const searchParams = useSearchParams();
+  const githubConnected = searchParams.get("github") === "connected";
   const router = useRouter();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [form, setForm] = useState<Form>({
@@ -152,7 +159,11 @@ export default function AdoptChildAppPage() {
           Adopt an existing child application into your management system
         </Typography>
       </Box>
-
+      {!githubConnected ? (
+        <ConnectGithubButton />
+      ) : (
+        <PickRepo />
+      )}
       <Card elevation={3}>
         <CardContent sx={{ p: 4 }}>
           <form onSubmit={handleSubmit}>
@@ -261,7 +272,6 @@ export default function AdoptChildAppPage() {
                   {error}
                 </Alert>
               )}
-              <ConnectGithubButton/> 
               {/* Submit Button */}
               <Box display="flex" gap={2} justifyContent="flex-end">
                 <Button
@@ -286,5 +296,13 @@ export default function AdoptChildAppPage() {
         </CardContent>
       </Card>
     </Container>
+  );
+}
+
+export default function AdoptChildAppPage() {
+  return (
+    <Suspense fallback={<div />}> 
+      <AdoptChildAppPageInner />
+    </Suspense>
   );
 }
